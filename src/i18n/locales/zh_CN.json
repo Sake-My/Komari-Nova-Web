@@ -447,13 +447,6 @@
     "title": "法律声明与合规指引"
   },
   "file_manager": {
-    "resource_monitor": {
-      "close": "隐藏资源小窗",
-      "load_error": "实时数据加载失败",
-      "open": "显示资源小窗",
-      "title": "资源小窗",
-      "waiting": "等待数据..."
-    },
     "action_failed": "文件操作失败",
     "action_success": "文件操作完成",
     "confirm_delete": "确定删除 {{name}} 吗？此操作无法撤销。",
@@ -540,6 +533,13 @@
     "path": "路径",
     "permissions": "权限与属主",
     "rename": "重命名",
+    "resource_monitor": {
+      "close": "隐藏资源小窗",
+      "load_error": "实时数据加载失败",
+      "open": "显示资源小窗",
+      "title": "资源小窗",
+      "waiting": "等待数据..."
+    },
     "root_unavailable": "无法获取根目录",
     "save_failed": "文件保存失败",
     "search": "搜索",
