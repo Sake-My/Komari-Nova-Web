@@ -53,6 +53,18 @@ jobs:
 
           if [ -z "$tag" ]; then
             tag="$(gh api repos/Sake-My/Komari-Nova/releases --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')"
+
+            # 尚无正式版本属于正常等待状态，后续构建和发布全部跳过。
+            if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+              echo "available=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::尚无正式后端 Release，本次跳过前端发布。"
+              {
+                echo "### Komari Web release"
+                echo
+                echo "尚无正式后端 Release，本次跳过前端构建和发布。"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
           fi
 
           if [ -z "$tag" ] || [ "$tag" = "null" ]; then
@@ -73,9 +85,10 @@ jobs:
           echo "main_published_at=$main_published_at" >> "$GITHUB_OUTPUT"
           echo "exists=$release_exists" >> "$GITHUB_OUTPUT"
           echo "force=${FORCE_RELEASE}" >> "$GITHUB_OUTPUT"
+          echo "available=true" >> "$GITHUB_OUTPUT"
 
       - name: Stop if web release already exists
-        if: steps.release.outputs.exists == 'true' && steps.release.outputs.force != 'true'
+        if: steps.release.outputs.available == 'true' && steps.release.outputs.exists == 'true' && steps.release.outputs.force != 'true'
         shell: bash
         run: |
           {
@@ -85,22 +98,22 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         run: npm ci
 
       - name: Build web package
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         run: npm run build
 
       - name: Package release asset
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         shell: bash
         run: |
           set -euo pipefail
@@ -114,7 +127,7 @@ jobs:
           zip -qr ../dist-release.zip .
 
       - name: Generate release notes
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         uses: actions/github-script@v9
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
@@ -220,7 +233,7 @@ jobs:
             fs.writeFileSync("release-notes.md", `${body}\n`);
 
       - name: Create or update web release
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         shell: bash
         run: |
           set -euo pipefail
@@ -253,7 +266,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Refresh Komari release notes
-        if: steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true'
+        if: steps.release.outputs.available == 'true' && (steps.release.outputs.exists != 'true' || steps.release.outputs.force == 'true')
         shell: bash
         env:
           KOMARI_RELEASE_NOTES_TOKEN: ${{ secrets.KOMARI_RELEASE_NOTES_TOKEN }}
