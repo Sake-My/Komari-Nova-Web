@@ -3,9 +3,6 @@ import { Text } from "@radix-ui/themes";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Loading from "@/components/loading";
-import ConfigFormTabs, {
-  type ConfigFormItem,
-} from "@/components/admin/ConfigFormTabs";
 import {
   SettingCardButton,
   SettingCardLabel,
@@ -15,141 +12,197 @@ import {
 } from "@/components/admin/SettingCard";
 import { useRPC2Call } from "@/contexts/RPC2Context";
 import { updateSettingsWithToast, useSettings } from "@/lib/api";
-import { resolveI18nText, type I18nText } from "@/utils/i18nText";
-import type { ThemeConfiguration } from "@/utils/themeConfiguration";
+import { renderProviderInputs } from "@/utils/renderProviders";
 
-interface NotificationChannel {
-  id: string;
-  configuration?: ThemeConfiguration;
+interface ProviderField {
+  name: string;
+  type: string;
+  default?: string;
+  required?: boolean;
+  options?: string;
+  help?: string;
 }
 
-interface ChannelConfigurationResponse {
-  configuration?: ThemeConfiguration;
-  data?: Record<string, unknown>;
+type ProviderDefinitions = Record<string, ProviderField[]>;
+type ProviderValues = Record<string, unknown>;
+
+interface ProviderConfiguration {
+  name: string;
+  addition: string;
+}
+
+function getDefaultValues(fields: ProviderField[]): ProviderValues {
+  return Object.fromEntries(
+    fields.map((field) => {
+      let value: unknown = field.default ?? "";
+      if (field.type === "bool") {
+        value = value === "true";
+      } else if (["int", "int64", "float32", "float64"].includes(field.type)) {
+        value = Number(value);
+      }
+      return [field.name, value];
+    }),
+  );
 }
 
 const NotificationSettings = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { call } = useRPC2Call();
   const { settings, loading, error } = useSettings();
-  const [channels, setChannels] = React.useState<NotificationChannel[]>([]);
-  const [currentChannel, setCurrentChannel] = React.useState("");
-  const [configuration, setConfiguration] =
-    React.useState<ThemeConfiguration>();
-  const [values, setValues] = React.useState<Record<string, any>>({});
-  const [channelLoading, setChannelLoading] = React.useState(false);
+  const [providerDefs, setProviderDefs] = React.useState<ProviderDefinitions>();
+  const [providerError, setProviderError] = React.useState("");
+  const [currentProvider, setCurrentProvider] = React.useState("");
+  const [loadedProvider, setLoadedProvider] = React.useState("");
+  const [providerValues, setProviderValues] = React.useState<ProviderValues>({});
+  const [configurationError, setConfigurationError] = React.useState("");
   const [saving, setSaving] = React.useState(false);
-  const [channelError, setChannelError] = React.useState("");
-
-  const currentLanguage =
-    i18n.resolvedLanguage || i18n.language || navigator.language;
+  const [switching, setSwitching] = React.useState(false);
 
   React.useEffect(() => {
-    if (loading) return;
-    setChannelLoading(true);
-    setChannelError("");
-    call<unknown, NotificationChannel[]>("admin:listNotificationChannels")
+    if (!loading) {
+      setCurrentProvider(settings.notification_method || "none");
+    }
+  }, [loading, settings.notification_method]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setProviderError("");
+    call<undefined, Record<string, ProviderField[] | null>>(
+      "admin:getMessageSenderProvider",
+    )
       .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setChannels(list);
-        const selected = settings.notification_method || "";
-        setCurrentChannel(selected || "none");
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+          throw new Error("Invalid message sender provider definitions");
+        }
+        const definitions: ProviderDefinitions = {};
+        for (const [name, fields] of Object.entries(data)) {
+          // empty 是服务端的空发送器，界面统一通过 none 表示停用渠道。
+          if (name === "empty") continue;
+          if (fields !== null && !Array.isArray(fields)) {
+            throw new Error("Invalid message sender provider fields: " + name);
+          }
+          definitions[name] = fields ?? [];
+        }
+        if (!cancelled) setProviderDefs(definitions);
       })
       .catch((err) => {
-        setChannelError(
-          err instanceof Error
-            ? err.message
-            : t("settings.notification.provider_fetch_failed"),
-        );
-      })
-      .finally(() => setChannelLoading(false));
-  }, [call, loading, settings.notification_method, t]);
+        if (!cancelled) {
+          setProviderError(err instanceof Error ? err.message : String(err));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [call]);
 
   React.useEffect(() => {
-    if (!currentChannel || currentChannel === "none") {
-      setConfiguration(undefined);
-      setValues({});
+    setLoadedProvider("");
+    setConfigurationError("");
+    setProviderValues({});
+    if (
+      !currentProvider ||
+      currentProvider === "none" ||
+      !providerDefs?.[currentProvider]
+    ) {
       return;
     }
-    setChannelLoading(true);
-    setChannelError("");
-    call<{ id: string }, ChannelConfigurationResponse>(
-      "admin:getNotificationChannelConfiguration",
-      { id: currentChannel },
+
+    let cancelled = false;
+    const defaults = getDefaultValues(providerDefs[currentProvider]);
+    call<{ provider: string }, ProviderConfiguration>(
+      "admin:getMessageSenderProvider",
+      { provider: currentProvider },
     )
       .then((result) => {
-        setConfiguration(result?.configuration);
-        setValues(result?.data || {});
+        if (
+          result?.name !== currentProvider ||
+          typeof result.addition !== "string"
+        ) {
+          throw new Error("Invalid message sender provider configuration");
+        }
+        const values: unknown = JSON.parse(result.addition || "{}");
+        if (!values || typeof values !== "object" || Array.isArray(values)) {
+          throw new Error("Message sender configuration must be a JSON object");
+        }
+        if (!cancelled) {
+          setProviderValues({ ...defaults, ...values });
+        }
       })
-      .catch(() => {
-        setConfiguration(undefined);
-        setValues({});
+      .catch((err) => {
+        if (cancelled) return;
+        // 当前 RPC 客户端将错误码和消息合并为 Error；仅缺少记录可首次填写，
+        // 不能把网络、权限、数据库或 JSON 错误当成空配置后覆盖保存。
+        if (
+          err instanceof Error &&
+          err.message ===
+            "RPC Error -32044: Provider not found: record not found"
+        ) {
+          setProviderValues(defaults);
+        } else {
+          setConfigurationError(
+            err instanceof Error ? err.message : String(err),
+          );
+        }
       })
-      .finally(() => setChannelLoading(false));
-  }, [call, currentChannel]);
+      .finally(() => {
+        if (!cancelled) setLoadedProvider(currentProvider);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [call, currentProvider, providerDefs]);
 
-  const channelOptions = useMemo(() => {
-    const registered = [
-      {
-        value: "none",
-        label: t("common.none"),
-      },
-      ...channels.map((channel) => ({
-        value: channel.id,
-        label:
-          resolveI18nText(
-            channel.configuration?.name as I18nText,
-            currentLanguage,
-          ) || channel.id,
+  const providerOptions = useMemo(() => {
+    const options = [
+      { value: "none", label: t("common.none") },
+      ...Object.keys(providerDefs ?? {}).map((name) => ({
+        value: name,
+        label: name,
       })),
     ];
     if (
-      currentChannel &&
-      currentChannel !== "none" &&
-      !registered.some((channel) => channel.value === currentChannel)
+      currentProvider &&
+      !options.some((option) => option.value === currentProvider)
     ) {
-      registered.push({
-        value: currentChannel,
-        label: `${currentChannel} (${t(
-          "settings.notification.unavailable",
-          "Unavailable",
-        )})`,
+      options.push({
+        value: currentProvider,
+        label:
+          currentProvider + " (" + t("settings.notification.unavailable") + ")",
       });
     }
-    return registered;
-  }, [channels, currentChannel, currentLanguage, t]);
+    return options;
+  }, [providerDefs, currentProvider, t]);
 
-  const currentRegistered = channels.some(
-    (channel) => channel.id === currentChannel,
-  );
-  const items = Array.isArray(configuration?.data)
-    ? (configuration.data as ConfigFormItem[])
-    : [];
+  const currentRegistered = Boolean(providerDefs?.[currentProvider]);
 
-  const saveConfiguration = async () => {
-    if (!currentChannel || !currentRegistered) return;
+  const saveConfiguration = async (values: ProviderValues) => {
     setSaving(true);
     try {
-      await call("admin:setNotificationChannelConfiguration", {
-        id: currentChannel,
-        data: values,
+      await call("admin:setMessageSenderProvider", {
+        name: currentProvider,
+        addition: JSON.stringify(values),
       });
       toast.success(t("common.success"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
+      throw err;
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading || (channelLoading && channels.length === 0)) {
-    return <Loading />;
-  }
   if (error) {
     return <Text color="red">{error}</Text>;
   }
-  if (channelError) {
-    return <Text color="red">{channelError}</Text>;
+  if (providerError) {
+    return (
+      <Text color="red">
+        {t("settings.notification.provider_fetch_failed")}: {providerError}
+      </Text>
+    );
+  }
+  if (loading || !providerDefs) {
+    return <Loading />;
   }
 
   return (
@@ -181,68 +234,72 @@ const NotificationSettings = () => {
       <SettingCardSelect
         title={t("settings.notification.method")}
         description={t("settings.notification.method_description")}
-        options={channelOptions}
-        value={currentChannel}
+        options={providerOptions}
+        value={currentProvider}
+        isSaving={saving || switching}
         OnSave={async (value) => {
-          if (value === currentChannel) return;
-          await updateSettingsWithToast(
-            { notification_method: value },
-            t,
-          );
-          setCurrentChannel(value);
+          if (value === currentProvider) return;
+          setSwitching(true);
+          try {
+            await updateSettingsWithToast(
+              { notification_method: value },
+              t,
+            );
+            setCurrentProvider(value);
+          } finally {
+            setSwitching(false);
+          }
         }}
       />
-      {currentChannel && !currentRegistered && currentChannel !== "none" ? (
+      {currentProvider && !currentRegistered && currentProvider !== "none" ? (
         <Text color="gray">
-          {t(
-            "settings.notification.channel_unavailable",
-            "This notification channel is not currently registered.",
-          )}
+          {t("settings.notification.channel_unavailable")}
         </Text>
       ) : null}
-      {currentRegistered && items.length > 0 ? (
-        <ConfigFormTabs
-          items={items}
-          values={values}
-          onValueChange={(key, value) =>
-            setValues((current) => ({ ...current, [key]: value }))
-          }
-          resolveText={(value) => resolveI18nText(value, currentLanguage)}
-          className="km-notification-channel-config"
-          fillHeight={false}
-          header={
-            <Text weight="bold">
-              {t("settings.notification.provider_fields")}
-            </Text>
-          }
-          footer={
-            <SettingCardButton
-              title={t("settings.notification.provider_fields")}
-              description={t(
-                "settings.notification.provider_fields_description",
-              )}
-              onClick={saveConfiguration}
-            >
-              {saving ? t("common.saving") : t("common.save")}
-            </SettingCardButton>
-          }
-        />
+      {currentRegistered ? (
+        loadedProvider !== currentProvider ? (
+          <Loading />
+        ) : configurationError ? (
+          <Text color="red">
+            {t("settings.notification.provider_settings_fetch_failed")}:{" "}
+            {configurationError}
+          </Text>
+        ) : (
+          <fieldset
+            disabled={saving || switching}
+            className="m-0 min-w-0 border-0 p-0"
+          >
+            {renderProviderInputs({
+              currentProvider,
+              providerDefs,
+              providerValues,
+              translationPrefix: "settings.notification." + currentProvider,
+              title: t("settings.notification.provider_fields"),
+              description: t("settings.notification.provider_fields_description"),
+              setProviderValues,
+              handleSave: saveConfiguration,
+              t,
+            })}
+          </fieldset>
+        )
       ) : null}
-      <SettingCardButton
-        title={t("settings.notification.test_title")}
-        description={t("settings.notification.test_description")}
-        onClick={async () => {
-          try {
-            await call("admin:testSendMessage");
-            toast.success(t("common.success"));
-          } catch (err) {
-            toast.error(err instanceof Error ? err.message : String(err));
-          }
-        }}
-        className="km-setting-card"
-      >
-        GO
-      </SettingCardButton>
+      <fieldset disabled={saving || switching} className="m-0 min-w-0 border-0 p-0">
+        <SettingCardButton
+          title={t("settings.notification.test_title")}
+          description={t("settings.notification.test_description")}
+          onClick={async () => {
+            try {
+              await call("admin:testSendMessage");
+              toast.success(t("common.success"));
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : String(err));
+            }
+          }}
+          className="km-setting-card"
+        >
+          GO
+        </SettingCardButton>
+      </fieldset>
     </>
   );
 };

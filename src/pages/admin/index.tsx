@@ -31,7 +31,6 @@ import {
   Plus,
   Radar,
   Settings,
-  FolderOpen,
   Trash2Icon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -1437,7 +1436,6 @@ const ActionButtons = ({
   settings: any;
   isSnapshotBackend: boolean;
 }) => {
-  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-4">
       <GenerateCommandButton
@@ -1445,15 +1443,6 @@ const ActionButtons = ({
         settings={settings}
         isSnapshotBackend={isSnapshotBackend}
       />
-      <IconButton
-        title={t("file_manager.title")}
-        variant="ghost"
-        onClick={() => {
-          window.open(`/admin/files?uuid=${node.uuid}`, "_blank");
-        }}
-      >
-        <FolderOpen size="18" />
-      </IconButton>
       <EditButton node={node} />
       <BillingButton node={node} />
       <DeleteButton node={node} />

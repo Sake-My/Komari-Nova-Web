@@ -192,11 +192,6 @@ body, * {
   z-index: 100000;
 }
 
-.km-file-editor ~ [data-radix-popper-content-wrapper],
-.km-file-editor ~ .rt-DialogOverlay {
-  z-index: 20 !important;
-}
-
 [data-km-toaster-portal] {
   position: fixed !important;
   inset: 0 !important;
@@ -220,20 +215,9 @@ body, * {
   z-index: 2147483646 !important;
 }
 
-.km-file-editor,
-.km-file-editor [data-radix-popper-content-wrapper],
 [data-radix-popper-content-wrapper] .rt-PopoverContent,
 [role="menu"] {
-  font-family: var(
-    --km-editor-font-family,
-    "Cascadia Mono",
-    "Noto Sans SC",
-    monospace
-  );
-}
-
-.km-file-editor {
-  z-index: 10;
+  font-family: "Cascadia Mono", "Noto Sans SC", monospace;
 }
 
 .km-login-page {
