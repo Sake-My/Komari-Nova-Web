@@ -19,6 +19,7 @@ import {
   IconButton,
   TextArea,
   SegmentedControl,
+  Select,
   Callout,
 } from "@radix-ui/themes";
 import {
@@ -98,14 +99,58 @@ const Layout = () => {
   const { nodeDetail, isLoading, error, refresh } = useNodeDetails();
   const { settings, loading: settingsLoading } = useSettings();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("all");
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
-  const filteredNodes = Array.isArray(nodeDetail)
-    ? nodeDetail
-        .filter((node) =>
-          node.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const groups = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (Array.isArray(nodeDetail) ? nodeDetail : [])
+            .map((node) => node.group)
+            .filter((group): group is string => Boolean(group?.trim()))
         )
-        .sort((a, b) => a.weight - b.weight)
-    : [];
+      ).sort((a, b) => a.localeCompare(b)),
+    [nodeDetail]
+  );
+  const filteredNodes = React.useMemo(
+    () =>
+      (Array.isArray(nodeDetail) ? nodeDetail : [])
+        .filter((node) => {
+          const matchesName = node.name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
+          // 真实组名使用独立前缀，避免与“全部”“未分组”的选项值冲突。
+          const groupValue = node.group?.trim()
+            ? `group:${node.group}`
+            : "ungrouped";
+          return (
+            matchesName &&
+            (selectedGroup === "all" || selectedGroup === groupValue)
+          );
+        })
+        .sort((a, b) => a.weight - b.weight),
+    [nodeDetail, searchTerm, selectedGroup]
+  );
+  const canReorder = selectedGroup === "all" && searchTerm.length === 0;
+
+  useEffect(() => {
+    // 定时刷新可能删除节点或改变分组，勾选只保留当前可见节点。
+    const visibleIds = new Set(filteredNodes.map((node) => node.uuid));
+    setSelectedNodes((previous) => {
+      const next = previous.filter((uuid) => visibleIds.has(uuid));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [filteredNodes]);
+
+  useEffect(() => {
+    if (
+      selectedGroup.startsWith("group:") &&
+      !groups.some((group) => `group:${group}` === selectedGroup)
+    ) {
+      setSelectedGroup("all");
+      setSelectedNodes([]);
+    }
+  }, [groups, selectedGroup]);
 
   useEffect(() => {
     const interval = setInterval(() => { refresh() }, 5000);
@@ -121,7 +166,16 @@ const Layout = () => {
     <Flex direction="column" gap="4" p="4" className="km-page-admin-index">
       <Header
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+        setSearchTerm={(term) => {
+          setSearchTerm(term);
+          setSelectedNodes([]);
+        }}
+        groups={groups}
+        selectedGroup={selectedGroup}
+        setSelectedGroup={(group) => {
+          setSelectedGroup(group);
+          setSelectedNodes([]);
+        }}
         selectedNodes={selectedNodes}
         settings={settings}
         settingsLoading={settingsLoading}
@@ -132,6 +186,7 @@ const Layout = () => {
       ) : (
         <NodeTable
           nodes={filteredNodes}
+          canReorder={canReorder}
           selectedNodes={selectedNodes}
           setSelectedNodes={setSelectedNodes}
           settings={settings}
@@ -175,7 +230,6 @@ const EmptyNodesGuide = () => {
 };
 
 type AutoDiscoveryInstallOptions = {
-  disableWebSsh: boolean;
   disableAutoUpdate: boolean;
   ignoreUnsafeCert: boolean;
   memoryIncludeCache: boolean;
@@ -234,7 +288,6 @@ const AutoDiscoverySection = ({
   const [showOptions, setShowOptions] = React.useState(false);
   const [installOptions, setInstallOptions] =
     React.useState<AutoDiscoveryInstallOptions>({
-      disableWebSsh: false,
       disableAutoUpdate: false,
       ignoreUnsafeCert: false,
       memoryIncludeCache: false,
@@ -287,9 +340,6 @@ const AutoDiscoverySection = ({
       return `http://${settings.script_domain.replace(/\/+$/, "")}`;
     })();
     const args: string[] = ["-e", host, "--auto-discovery", adKey];
-    if (installOptions.disableWebSsh) {
-      args.push("--disable-web-ssh");
-    }
     if (installOptions.disableAutoUpdate) {
       args.push("--disable-auto-update");
     }
@@ -523,28 +573,6 @@ const AutoDiscoverySection = ({
       {showOptions && (
         <Flex direction="column" gap="2">
           <div className="grid grid-cols-2 gap-2">
-            <Flex gap="2" align="center">
-              <Checkbox
-                checked={installOptions.disableWebSsh}
-                onCheckedChange={(checked) =>
-                  setInstallOptions((prev) => ({
-                    ...prev,
-                    disableWebSsh: Boolean(checked),
-                  }))
-                }
-              />
-              <label
-                className="text-sm font-normal cursor-pointer"
-                onClick={() =>
-                  setInstallOptions((prev) => ({
-                    ...prev,
-                    disableWebSsh: !prev.disableWebSsh,
-                  }))
-                }
-              >
-                {t("admin.nodeTable.disableWebSsh")}
-              </label>
-            </Flex>
             <Flex gap="2" align="center">
               <Checkbox
                 checked={installOptions.disableAutoUpdate}
@@ -1053,12 +1081,18 @@ const AutoDiscoverySection = ({
 const Header = ({
   searchTerm,
   setSearchTerm,
+  groups,
+  selectedGroup,
+  setSelectedGroup,
   selectedNodes,
   settings,
   settingsLoading,
 }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  groups: string[];
+  selectedGroup: string;
+  setSelectedGroup: (group: string) => void;
   selectedNodes: string[];
   settings: any;
   settingsLoading: boolean;
@@ -1099,7 +1133,22 @@ const Header = ({
           <Text size="2">({selectedNodes.length} selected)</Text>
         )}
       </Flex>
-      <Flex gap="2">
+      <Flex gap="2" wrap="wrap" align="center">
+        <Select.Root value={selectedGroup} onValueChange={setSelectedGroup}>
+          <Select.Trigger
+            aria-label={t("common.group")}
+            className="km-admin-node-group-filter max-w-64"
+          />
+          <Select.Content>
+            <Select.Item value="all">{t("admin.nodeTable.allGroups")}</Select.Item>
+            <Select.Item value="ungrouped">{t("common.ungrouped")}</Select.Item>
+            {groups.map((group) => (
+              <Select.Item key={group} value={`group:${group}`}>
+                {group}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
         <TextField.Root
           placeholder={t("admin.nodeTable.searchByName")}
           value={searchTerm}
@@ -1139,19 +1188,21 @@ const Header = ({
 
 const SortableRow = ({
   node,
+  canReorder,
   selectedNodes,
   handleSelectNode,
   settings,
   isSnapshotBackend,
 }: {
   node: NodeDetail;
+  canReorder: boolean;
   selectedNodes: string[];
   handleSelectNode: (uuid: string, checked: boolean) => void;
   settings: any;
   isSnapshotBackend: boolean;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: node.uuid });
+    useSortable({ id: node.uuid, disabled: !canReorder });
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const style = {
@@ -1166,20 +1217,25 @@ const SortableRow = ({
     <TableRow ref={setNodeRef} style={style} className="hover:bg-accent-a2">
       <TableCell>
         <div
-          {...attributes}
-          {...listeners}
-          className={`cursor-move p-2 rounded hover:bg-accent-a3 transition-colors ${
-            isMobile ? "touch-manipulation select-none" : ""
-          }`}
+          {...(canReorder ? attributes : {})}
+          {...(canReorder ? listeners : {})}
+          aria-disabled={!canReorder}
+          className={`p-2 rounded transition-colors ${
+            canReorder
+              ? "cursor-move hover:bg-accent-a3"
+              : "cursor-not-allowed opacity-40"
+          } ${isMobile ? "touch-manipulation select-none" : ""}`}
           style={{
-            touchAction: "none", // 禁用移动端的默认手势
+            touchAction: canReorder ? "none" : "auto",
             WebkitUserSelect: "none",
             userSelect: "none",
           }}
           title={
-            isMobile
-              ? t("admin.nodeTable.dragToReorder", "长按拖拽重新排序")
-              : undefined
+            !canReorder
+              ? t("admin.nodeTable.reorderDisabledWhileFiltering")
+              : isMobile
+                ? t("admin.nodeTable.dragToReorder", "长按拖拽重新排序")
+                : undefined
           }
         >
           <MenuIcon size={isMobile ? 18 : 16} color={"var(--gray-8)"} />
@@ -1282,11 +1338,13 @@ const SortableRow = ({
 
 const NodeTable = ({
   nodes,
+  canReorder,
   selectedNodes,
   setSelectedNodes,
   settings,
 }: {
   nodes: NodeDetail[];
+  canReorder: boolean;
   selectedNodes: string[];
   setSelectedNodes: (nodes: string[]) => void;
   settings: any;
@@ -1316,6 +1374,7 @@ const NodeTable = ({
     setLocalNodes(nodes);
   }, [nodes]);
   const handleDragStart = () => {
+    if (!canReorder) return;
     setIsDragging(true);
     if ("vibrate" in navigator) {
       navigator.vibrate(50);
@@ -1324,11 +1383,14 @@ const NodeTable = ({
 
   const handleDragEnd = async (event: any) => {
     setIsDragging(false);
+    // 筛选后的索引不是全局排序，禁止用局部列表重写服务器权重。
+    if (!canReorder) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const oldIndex = localNodes.findIndex((node) => node.uuid === active.id);
     const newIndex = localNodes.findIndex((node) => node.uuid === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
     const reorderedNodes = Array.from(localNodes);
     const [reorderedItem] = reorderedNodes.splice(oldIndex, 1);
     reorderedNodes.splice(newIndex, 0, reorderedItem);
@@ -1380,6 +1442,7 @@ const NodeTable = ({
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => setIsDragging(false)}
       >
         <Table>
           <TableHeader style={{ backgroundColor: "var(--accent-4)" }}>
@@ -1388,9 +1451,10 @@ const NodeTable = ({
               <TableHead>
                 <Checkbox
                   checked={
-                    selectedNodes.length === localNodes.length &&
-                    localNodes.length > 0
+                    localNodes.length > 0 &&
+                    localNodes.every((node) => selectedNodes.includes(node.uuid))
                   }
+                  disabled={localNodes.length === 0}
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
@@ -1412,6 +1476,7 @@ const NodeTable = ({
                 <SortableRow
                   key={node.uuid}
                   node={node}
+                  canReorder={canReorder}
                   selectedNodes={selectedNodes}
                   handleSelectNode={handleSelectNode}
                   settings={settings}
@@ -1419,6 +1484,16 @@ const NodeTable = ({
                 />
               ))}
             </SortableContext>
+            {localNodes.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={9}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  {t("admin.nodeTable.noMatchingNodes")}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </DndContext>
@@ -1498,7 +1573,6 @@ function DeleteButton({ node }: { node: NodeDetail }) {
   );
 }
 type InstallOptions = {
-  disableWebSsh: boolean;
   disableAutoUpdate: boolean;
   ignoreUnsafeCert: boolean;
   memoryIncludeCache: boolean;
@@ -1526,7 +1600,6 @@ function GenerateCommandButton({
   const [selectedPlatform, setSelectedPlatform] =
     React.useState<Platform>("linux");
   const [installOptions, setInstallOptions] = React.useState<InstallOptions>({
-    disableWebSsh: false,
     disableAutoUpdate: false,
     ignoreUnsafeCert: false,
     memoryIncludeCache: false,
@@ -1580,9 +1653,6 @@ function GenerateCommandButton({
     const token = node.token || "";
     let args = ["-e", host, "-t", token];
     // 根据安装选项生成参数
-    if (installOptions.disableWebSsh) {
-      args.push("--disable-web-ssh");
-    }
     if (installOptions.disableAutoUpdate) {
       args.push("--disable-auto-update");
     }
@@ -1753,28 +1823,6 @@ function GenerateCommandButton({
               {t("admin.nodeTable.installOptions", "安装选项")}
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <Flex gap="2" align="center">
-                <Checkbox
-                  checked={installOptions.disableWebSsh}
-                  onCheckedChange={(checked) => {
-                    setInstallOptions((prev) => ({
-                      ...prev,
-                      disableWebSsh: Boolean(checked),
-                    }));
-                  }}
-                />
-                <label
-                  className="text-sm font-normal"
-                  onClick={() => {
-                    setInstallOptions((prev) => ({
-                      ...prev,
-                      disableWebSsh: !prev.disableWebSsh,
-                    }));
-                  }}
-                >
-                  {t("admin.nodeTable.disableWebSsh")}
-                </label>
-              </Flex>
               <Flex gap="2" align="center">
                 <Checkbox
                   checked={installOptions.disableAutoUpdate}

@@ -1,4 +1,46 @@
 {
+  "passkey": {
+    "title": "通行密鑰（Passkey）",
+    "description": "使用裝置的指紋、臉部、PIN 或安全金鑰登入。通行密鑰驗證成功後，無需再次輸入動態驗證碼。",
+    "login": "使用通行密鑰登入",
+    "disabled": "網站尚未啟用通行密鑰登入。",
+    "open_settings": "前往登入設定",
+    "add": "新增通行密鑰",
+    "empty": "尚未綁定通行密鑰",
+    "rename": "重新命名",
+    "name": "名稱",
+    "name_placeholder": "例如：我的手機、工作電腦",
+    "name_required": "請輸入 1–100 個字元的名稱。",
+    "current_password": "目前密碼",
+    "password_required": "請輸入目前密碼。",
+    "otp_required": "請輸入 6 位動態驗證碼。",
+    "created_at": "建立時間",
+    "last_used_at": "最近使用",
+    "never_used": "尚未使用",
+    "delete_title": "刪除通行密鑰",
+    "delete_description": "確定刪除「{{name}}」？刪除後，此通行密鑰將無法登入本站。",
+    "register_description": "驗證帳戶身分後，依照瀏覽器提示建立通行密鑰。可以綁定多個通行密鑰。",
+    "rename_description": "設定一個方便辨認的名稱。",
+    "register_success": "已新增通行密鑰",
+    "rename_success": "已更新通行密鑰名稱",
+    "delete_success": "已刪除通行密鑰",
+    "config": {
+      "description": "為本站設定固定的登入網址，並啟用通行密鑰。",
+      "enable": "啟用通行密鑰登入",
+      "origin": "網站登入網址",
+      "origin_hint": "使用實際存取本站的 HTTPS 網域，可包含連接埠，不包含路徑。更換網域後需重新綁定；本機開發允許 http://localhost。",
+      "invalid_origin": "請輸入有效的 HTTPS 網域網址（本機可用 http://localhost），不能使用 IP 位址，也不能包含使用者名稱、路徑、查詢參數或片段。"
+    },
+    "errors": {
+      "secure_context": "通行密鑰需要安全連線，請透過 HTTPS 存取本站。",
+      "unsupported": "目前瀏覽器不支援通行密鑰，請更換瀏覽器或使用其他登入方式。",
+      "cancelled": "請求已取消、逾時或找不到可用的通行密鑰，請重試或使用其他方式。",
+      "already_registered": "此驗證器已有本站的通行密鑰，請使用現有密鑰或選擇其他驗證器。",
+      "origin": "目前網站網址與通行密鑰設定不符，請從設定的登入網址存取。",
+      "failed": "通行密鑰操作失敗，請重試。",
+      "request_failed": "無法完成通行密鑰請求，請檢查網路連線後重試。"
+    }
+  },
   "about": {
     "ai": "Komari 專案的開發過程得到了人工智慧工具的輔助。這些工具被用於執行程式碼生成、重構和除錯等任務，以提高開發效率和程式碼品質。所有由 AI 生成的程式碼和建議都經過了人類開發者的審查與驗證。",
     "open_source": "Komari 基於 MIT 協議開源，並使用了以下開源軟體構建：",
@@ -90,6 +132,7 @@
     },
     "nodeTable": {
       "addNode": "新增節點",
+      "allGroups": "全部分組",
       "autoDiscovery": {
         "disabledDescription": "開啟自動發現後，無需逐臺手動新增節點。只要在目標伺服器上執行一條命令，Agent 就會攜帶金鑰自動註冊並上線，非常適合批次部署多臺伺服器。",
         "enabledDescription": "在目標伺服器上執行下面的命令，Agent 將自動註冊並上線，無需手動新增節點。",
@@ -108,7 +151,6 @@
       "customColumns": "自定義列",
       "deleting": "刪除中...",
       "disableAutoUpdate": "禁用自動更新",
-      "disableWebSsh": "禁用遠端控制",
       "dragToReorder": "長按拖拽重新排序",
       "editNodePrice": "編輯帳單",
       "emptyGuide": {
@@ -141,9 +183,11 @@
       "nameOptional": "名稱 (可選)",
       "namePlaceholder": "名稱",
       "noData": "沒有資料",
+      "noMatchingNodes": "沒有符合篩選條件的伺服器",
       "nodeList": "節點列表",
       "price": "價格",
       "priceTips": "0不顯示，-1表示免費",
+      "reorderDisabledWhileFiltering": "清除篩選後可調整排序",
       "searchByName": "查詢伺服器",
       "serviceName": "服務名稱",
       "serviceName_placeholder": "服務名稱，為空則使用預設名稱(komari-agent)",

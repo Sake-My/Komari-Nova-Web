@@ -13,6 +13,8 @@ export interface SettingsResponse {
   geo_ip_provider: string;
   o_auth_provider: string;
   o_auth_enabled: boolean;
+  passkey_enabled?: boolean;
+  passkey_origin?: string;
   ssrf_protection_enabled: boolean;
   custom_head: string;
   metric_rollup_minute_retention_minutes?: number;

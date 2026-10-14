@@ -11,10 +11,13 @@ import Loading from "@/components/loading";
 import React from "react";
 import { renderProviderInputs } from "@/utils/renderProviders";
 import { toast } from "sonner";
+import PasskeyConfig from "@/components/admin/PasskeyConfig";
+import { usePublicInfo } from "@/contexts/PublicInfoContext";
 
 export default function SignOnSettings() {
   const { t } = useTranslation();
-  const { settings, loading, error } = useSettings();
+  const { settings, loading, error, refetch } = useSettings();
+  const { refresh: refreshPublicInfo } = usePublicInfo();
   const [providerDefs, setProviderDefs] = React.useState<any>({});
   const [providerList, setProviderList] = React.useState<string[]>([]);
   const [currentProvider, setCurrentProvider] = React.useState<string>("");
@@ -116,6 +119,14 @@ export default function SignOnSettings() {
           await updateSettingsWithToast({ disable_password_login: checked }, t);
         }}
         className="km-page-admin-settings-sign-on km-setting-card"
+      />
+      <PasskeyConfig
+        key={`${settings.passkey_enabled}:${settings.passkey_origin}`}
+        enabled={settings.passkey_enabled === true}
+        origin={settings.passkey_origin || ""}
+        onSaved={async () => {
+          await Promise.all([refetch(), refreshPublicInfo()]);
+        }}
       />
       <SettingCardLabel>{t("settings.sso.title")}</SettingCardLabel>
       <SettingCardSwitch

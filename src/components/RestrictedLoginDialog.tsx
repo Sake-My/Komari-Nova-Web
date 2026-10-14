@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Dialog, Text, TextField } from "@radix-ui/themes";
-import { LoaderCircle, LogIn } from "lucide-react";
+import { Fingerprint, LoaderCircle, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { loginWithPasskey, passkeyErrorMessage, passkeySupportError } from "@/lib/passkey";
 
 export type RestrictedAuthStatus = {
   oauth_enabled: boolean;
   oauth_provider: string;
   password_login_enabled: boolean;
+  passkey_enabled: boolean;
   logged_in: boolean;
   username?: string;
 };
@@ -34,8 +36,35 @@ export default function RestrictedLoginDialog({
   const [requireTwoFactor, setRequireTwoFactor] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const passkeyController = useRef<AbortController | null>(null);
+  const supportError = auth?.passkey_enabled ? passkeySupportError() : null;
+  const authenticating = busy || passkeyBusy;
+
+  useEffect(() => () => passkeyController.current?.abort(), []);
+  useEffect(() => {
+    if (auth?.logged_in) passkeyController.current?.abort();
+  }, [auth?.logged_in]);
+
+  const loginPasskey = async () => {
+    if (busy || passkeyController.current) return;
+    const controller = new AbortController();
+    passkeyController.current = controller;
+    setPasskeyBusy(true);
+    setError("");
+    try {
+      await loginWithPasskey(controller.signal);
+      if (!controller.signal.aborted) await onAuthenticated();
+    } catch (loginError) {
+      if (!controller.signal.aborted) setError(passkeyErrorMessage(loginError, t));
+    } finally {
+      if (passkeyController.current === controller) passkeyController.current = null;
+      setPasskeyBusy(false);
+    }
+  };
 
   const login = async () => {
+    if (busy || passkeyController.current) return;
     setBusy(true);
     setError("");
     try {
@@ -96,7 +125,7 @@ export default function RestrictedLoginDialog({
                 onChange={(event) => setUsername(event.target.value)}
                 autoComplete="username"
                 autoFocus
-                disabled={busy}
+                disabled={authenticating}
               />
             </label>
             <label className="block">
@@ -110,7 +139,7 @@ export default function RestrictedLoginDialog({
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
-                disabled={busy}
+                disabled={authenticating}
               />
             </label>
             {requireTwoFactor && (
@@ -125,19 +154,14 @@ export default function RestrictedLoginDialog({
                   onChange={(event) => setTwoFactor(event.target.value)}
                   autoComplete="one-time-code"
                   inputMode="numeric"
-                  disabled={busy}
+                  disabled={authenticating}
                 />
               </label>
-            )}
-            {error && (
-              <Text as="div" size="2" color="red">
-                {error}
-              </Text>
             )}
             <Button
               type="submit"
               className="w-full"
-              disabled={busy || !username.trim() || !password}
+              disabled={authenticating || !username.trim() || !password}
             >
               {busy ? (
                 <LoaderCircle size={16} className="animate-spin" />
@@ -148,10 +172,39 @@ export default function RestrictedLoginDialog({
             </Button>
           </form>
         )}
+        {auth?.passkey_enabled && (
+          <>
+            <Button
+              type="button"
+              variant={auth.password_login_enabled ? "soft" : "solid"}
+              className="mt-3 w-full"
+              disabled={authenticating || Boolean(supportError)}
+              onClick={() => void loginPasskey()}
+            >
+              {passkeyBusy ? (
+                <LoaderCircle size={16} className="animate-spin" />
+              ) : (
+                <Fingerprint size={16} />
+              )}
+              {passkeyBusy ? t("loading") : t("passkey.login")}
+            </Button>
+            {supportError && (
+              <Text as="div" size="2" color="gray" mt="2">
+                {t(supportError)}
+              </Text>
+            )}
+          </>
+        )}
+        {error && (
+          <Text as="div" size="2" color="red" mt="2" role="alert">
+            {error}
+          </Text>
+        )}
         {auth?.oauth_enabled && (
           <Button
-            variant={auth.password_login_enabled ? "soft" : "solid"}
+            variant={auth.password_login_enabled || auth.passkey_enabled ? "soft" : "solid"}
             className="mt-3 w-full"
+            disabled={authenticating}
             onClick={() => {
               window.location.href = "/api/oauth";
             }}

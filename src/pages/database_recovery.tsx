@@ -43,7 +43,7 @@ class RecoveryRequestError extends Error {
 
 type LoginMethods = Pick<
   RestrictedAuthStatus,
-  "oauth_enabled" | "oauth_provider" | "password_login_enabled"
+  "oauth_enabled" | "oauth_provider" | "password_login_enabled" | "passkey_enabled"
 >;
 
 type Me = Pick<RestrictedAuthStatus, "logged_in" | "username">;

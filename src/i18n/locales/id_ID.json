@@ -1,4 +1,46 @@
 {
+  "passkey": {
+    "title": "Passkey",
+    "description": "Masuk dengan sidik jari, wajah, PIN perangkat, atau kunci keamanan. Passkey yang terverifikasi tidak memerlukan kode autentikator tambahan.",
+    "login": "Masuk dengan passkey",
+    "disabled": "Login passkey belum diaktifkan untuk situs ini.",
+    "open_settings": "Buka pengaturan login",
+    "add": "Tambahkan passkey",
+    "empty": "Belum ada passkey terdaftar",
+    "rename": "Ganti nama",
+    "name": "Nama",
+    "name_placeholder": "Contoh: Ponsel saya atau Komputer kerja",
+    "name_required": "Masukkan nama sepanjang 1–100 karakter.",
+    "current_password": "Kata sandi saat ini",
+    "password_required": "Masukkan kata sandi saat ini.",
+    "otp_required": "Masukkan kode autentikator 6 digit.",
+    "created_at": "Dibuat",
+    "last_used_at": "Terakhir digunakan",
+    "never_used": "Belum digunakan",
+    "delete_title": "Hapus passkey",
+    "delete_description": "Hapus \"{{name}}\"? Passkey ini tidak dapat lagi digunakan untuk masuk ke situs ini.",
+    "register_description": "Verifikasi akun Anda, lalu ikuti petunjuk browser untuk membuat passkey. Anda dapat mendaftarkan beberapa passkey.",
+    "rename_description": "Pilih nama yang memudahkan Anda mengenali passkey ini.",
+    "register_success": "Passkey ditambahkan",
+    "rename_success": "Nama passkey diperbarui",
+    "delete_success": "Passkey dihapus",
+    "config": {
+      "description": "Atur alamat login tetap untuk situs ini dan aktifkan passkey.",
+      "enable": "Aktifkan login passkey",
+      "origin": "Alamat login situs",
+      "origin_hint": "Gunakan domain HTTPS yang dipakai untuk mengakses situs ini, dengan port opsional dan tanpa jalur. Perubahan domain memerlukan pendaftaran ulang. Pengembangan lokal dapat menggunakan http://localhost.",
+      "invalid_origin": "Masukkan alamat domain HTTPS (http://localhost diizinkan secara lokal). Alamat IP, kredensial, jalur, parameter kueri, dan fragmen tidak diizinkan."
+    },
+    "errors": {
+      "secure_context": "Passkey memerlukan koneksi aman. Buka situs ini melalui HTTPS.",
+      "unsupported": "Browser ini tidak mendukung passkey. Gunakan browser atau metode login lain.",
+      "cancelled": "Permintaan dibatalkan, kehabisan waktu, atau passkey tidak tersedia. Coba lagi atau gunakan metode lain.",
+      "already_registered": "Autentikator ini sudah memiliki passkey untuk situs ini. Gunakan passkey yang ada atau autentikator lain.",
+      "origin": "Alamat situs tidak sesuai dengan konfigurasi passkey. Buka alamat login yang dikonfigurasi.",
+      "failed": "Operasi passkey gagal. Silakan coba lagi.",
+      "request_failed": "Permintaan passkey tidak dapat diselesaikan. Periksa koneksi lalu coba lagi."
+    }
+  },
   "about": {
     "ai": "Proses pengembangan proyek Komari didukung oleh alat kecerdasan buatan. Alat-alat ini digunakan untuk menjalankan tugas seperti pembuatan kode, refactoring, dan debugging, untuk meningkatkan efisiensi pengembangan dan kualitas kode. Semua kode dan saran yang dihasilkan oleh AI telah diperiksa dan divalidasi oleh pengembang manusia.",
     "open_source": "Komari bersifat open source berdasarkan lisensi MIT dan dibangun menggunakan perangkat lunak open source berikut:",
@@ -90,6 +132,7 @@
     },
     "nodeTable": {
       "addNode": "Tambah Node",
+      "allGroups": "Semua grup",
       "autoDiscovery": {
         "disabledDescription": "Dengan penemuan otomatis aktif, Anda tidak perlu menambahkan node satu per satu. Cukup jalankan satu perintah di server target dan Agent akan otomatis terdaftar dan online menggunakan kunci tersebut. Ideal untuk men-deploy banyak server sekaligus.",
         "enabledDescription": "Jalankan perintah di bawah ini pada server target. Agent akan otomatis terdaftar dan online tanpa perlu membuat node secara manual.",
@@ -108,7 +151,6 @@
       "customColumns": "Kolom Kustom",
       "deleting": "Menghapus...",
       "disableAutoUpdate": "Nonaktifkan Pembaruan Otomatis",
-      "disableWebSsh": "Nonaktifkan Kontrol Jarak Jauh",
       "dragToReorder": "Tekan lama dan seret untuk mengurutkan ulang",
       "editNodePrice": "Ubah Harga",
       "emptyGuide": {
@@ -141,9 +183,11 @@
       "nameOptional": "Nama (opsional)",
       "namePlaceholder": "Nama",
       "noData": "Tidak ada data",
+      "noMatchingNodes": "Tidak ada server yang sesuai dengan filter",
       "nodeList": "Daftar Node",
       "price": "Harga",
       "priceTips": "0 tidak ditampilkan, -1 berarti gratis",
+      "reorderDisabledWhileFiltering": "Hapus filter untuk mengubah urutan server",
       "searchByName": "Cari server",
       "serviceName": "Nama Layanan",
       "serviceName_placeholder": "Nama layanan, biarkan kosong untuk menggunakan nama default (komari-agent)",

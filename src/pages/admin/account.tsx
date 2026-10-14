@@ -13,6 +13,7 @@ import {
 } from "@radix-ui/themes";
 import { Github, Globe, User } from "lucide-react";
 import Loading from "@/components/loading";
+import PasskeySettings from "@/components/admin/PasskeySettings";
 
 const Account = () => {
   return (
@@ -262,6 +263,7 @@ const InnerLayout = () => {
           </form>
         </Flex>
         <Flex direction="column" className="km-account-2fa gap-2">
+          <PasskeySettings />
           <label className="font-bold text-2xl">2FA</label>
           {account?.["2fa_enabled"] ? (
             <TwoFactorEnabled />

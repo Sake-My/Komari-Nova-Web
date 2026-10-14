@@ -1,4 +1,46 @@
 {
+  "passkey": {
+    "title": "Passkeys",
+    "description": "Sign in with your device fingerprint, face, PIN, or security key. A verified passkey does not require an additional authenticator code.",
+    "login": "Sign in with a passkey",
+    "disabled": "Passkey sign-in has not been enabled for this site.",
+    "open_settings": "Open sign-in settings",
+    "add": "Add passkey",
+    "empty": "No passkeys registered",
+    "rename": "Rename",
+    "name": "Name",
+    "name_placeholder": "For example: My phone or Work computer",
+    "name_required": "Enter a name between 1 and 100 characters.",
+    "current_password": "Current password",
+    "password_required": "Enter your current password.",
+    "otp_required": "Enter a 6-digit authenticator code.",
+    "created_at": "Created",
+    "last_used_at": "Last used",
+    "never_used": "Never used",
+    "delete_title": "Delete passkey",
+    "delete_description": "Delete \"{{name}}\"? This passkey will no longer be able to sign in to this site.",
+    "register_description": "Verify your account, then follow the browser prompts to create a passkey. You can register multiple passkeys.",
+    "rename_description": "Choose a name that helps you identify this passkey.",
+    "register_success": "Passkey added",
+    "rename_success": "Passkey renamed",
+    "delete_success": "Passkey deleted",
+    "config": {
+      "description": "Configure a fixed sign-in address for this site and enable passkeys.",
+      "enable": "Enable passkey sign-in",
+      "origin": "Site sign-in address",
+      "origin_hint": "Use the HTTPS domain used to access this site, with an optional port and no path. Changing the domain requires registering passkeys again. Local development can use http://localhost.",
+      "invalid_origin": "Enter an HTTPS domain address (http://localhost is allowed locally). IP addresses, credentials, paths, query strings, and fragments are not allowed."
+    },
+    "errors": {
+      "secure_context": "Passkeys require a secure connection. Open this site using HTTPS.",
+      "unsupported": "This browser does not support passkeys. Use another browser or sign-in method.",
+      "cancelled": "The request was cancelled, timed out, or no passkey was available. Try again or use another method.",
+      "already_registered": "This authenticator already has a passkey for this site. Use the existing passkey or another authenticator.",
+      "origin": "This site address does not match the passkey configuration. Open the configured sign-in address.",
+      "failed": "The passkey operation failed. Please try again.",
+      "request_failed": "The passkey request could not be completed. Check your connection and try again."
+    }
+  },
   "about": {
     "ai": "The development process of the Komari project has been assisted by artificial intelligence tools. These tools are used for tasks such as code generation, refactoring, and debugging to improve development efficiency and code quality. All AI-generated code and suggestions have been reviewed and validated by human developers.",
     "open_source": "Komari is open source under the MIT license and is built using the following open source software:",
@@ -90,6 +132,7 @@
     },
     "nodeTable": {
       "addNode": "Add",
+      "allGroups": "All groups",
       "autoDiscovery": {
         "disabledDescription": "With auto discovery enabled, you no longer need to add nodes one by one. Just run a single command on the target server and the Agent will register and come online automatically using the key. Ideal for deploying many servers at once.",
         "enabledDescription": "Run the command below on the target server. The Agent will register and come online automatically, no manual node creation needed.",
@@ -108,7 +151,6 @@
       "customColumns": "Custom columns",
       "deleting": "Delete...",
       "disableAutoUpdate": "Disable auto update",
-      "disableWebSsh": "Disable remote control",
       "dragToReorder": "Long press and drag to reorder",
       "editNodePrice": "Edit Price",
       "emptyGuide": {
@@ -141,9 +183,11 @@
       "nameOptional": "Name (optional)",
       "namePlaceholder": "Name",
       "noData": "No data",
+      "noMatchingNodes": "No servers match the filters",
       "nodeList": "Node list",
       "price": "Price",
       "priceTips": "0 is not displayed, -1 means free",
+      "reorderDisabledWhileFiltering": "Clear the filters to reorder servers",
       "searchByName": "Find the server",
       "serviceName": "Service name",
       "serviceName_placeholder": "Service name, leave empty to use the default name (komari-agent)",
