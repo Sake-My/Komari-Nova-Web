@@ -104,6 +104,14 @@
       "uuid": "UUID"
     },
     "nodeEdit": {
+      "region": "Wilayah",
+      "regionAuto": "Deteksi otomatis",
+      "regionManual": "Pengaturan manual",
+      "regionPlaceholder": "Cari wilayah atau masukkan kode dua huruf, misalnya DE",
+      "regionAutoHint": "Gunakan wilayah yang terdeteksi otomatis. Simpan untuk menghapus pengaturan manual.",
+      "regionManualHint": "Pilih negara atau wilayah, atau masukkan kode dua huruf. Laporan Agent tidak akan menimpa pengaturan manual.",
+      "regionCurrent": "Wilayah saat ini:",
+      "regionInvalid": "Pilih wilayah atau masukkan kode negara/wilayah dua huruf yang valid.",
       "editInfo": "Ubah Informasi",
       "hidden": "Sembunyikan Node",
       "hidden_description": "Sembunyikan node ini jika belum masuk",

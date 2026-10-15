@@ -104,6 +104,14 @@
       "uuid": "UUID"
     },
     "nodeEdit": {
+      "region": "地域",
+      "regionAuto": "自動検出",
+      "regionManual": "手動設定",
+      "regionPlaceholder": "地域を検索するか、DE などの2文字コードを入力",
+      "regionAutoHint": "自動検出した地域を使用します。保存すると手動設定が解除されます。",
+      "regionManualHint": "国や地域を選択するか、2文字コードを入力してください。Agent の報告で手動設定が上書きされることはありません。",
+      "regionCurrent": "現在の地域：",
+      "regionInvalid": "地域を選択するか、有効な2文字の国・地域コードを入力してください。",
       "editInfo": "情報を編集",
       "hidden": "ノードを隠す",
       "hidden_description": "未ログインの状態でこのノードを隠す",

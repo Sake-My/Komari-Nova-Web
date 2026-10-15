@@ -104,6 +104,14 @@
       "uuid": "UUID"
     },
     "nodeEdit": {
+      "region": "Region",
+      "regionAuto": "Automatic",
+      "regionManual": "Manual",
+      "regionPlaceholder": "Search a region or enter a two-letter code, e.g. DE",
+      "regionAutoHint": "Use the automatically detected region. Save to clear any manual override.",
+      "regionManualHint": "Select a country or region, or enter its two-letter code. Agent reports will not replace this value.",
+      "regionCurrent": "Current region:",
+      "regionInvalid": "Select a region or enter a valid two-letter country/region code.",
       "editInfo": "Edit information",
       "hidden": "Hide Node",
       "hidden_description": "Hide this node when not logged in",

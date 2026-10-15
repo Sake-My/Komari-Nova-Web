@@ -85,6 +85,16 @@ import {
 import { useSettings } from "@/lib/api";
 import { SelectOrInput } from "@/components/ui/select-or-input";
 import { useRPC2Call } from "@/contexts/RPC2Context";
+import {
+  getRegionDisplayName,
+  getSupportedRegions,
+  isRegionMatch,
+} from "@/utils/regionHelper";
+import {
+  buildRegionOverridePatch,
+  getRegionCode,
+  getRegionFlag,
+} from "@/lib/nodeRegion";
 
 // 分号分隔多个分组，生成选项和筛选时使用相同的解析规则。
 const splitNodeGroups = (group?: string | null): string[] =>
@@ -2391,7 +2401,7 @@ function GenerateCommandButton({
 }
 
 function EditButton({ node }: { node: NodeDetail }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const { refresh } = useNodeDetails();
   const nameRef = React.useRef<HTMLInputElement>(null);
@@ -2405,6 +2415,31 @@ function EditButton({ node }: { node: NodeDetail }) {
   const [traffic_limit_type, setTrafficLimitType] = useState("sum");
   const [trafficLimitInput, setTrafficLimitInput] = useState("0 B");
   const [trafficLimitInvalid, setTrafficLimitInvalid] = useState(false);
+  const originalRegionOverride = React.useRef("");
+  const [manualRegion, setManualRegion] = useState(false);
+  const [regionInput, setRegionInput] = useState("");
+  const regionLanguage = (i18n.resolvedLanguage ?? i18n.language).startsWith("zh")
+    ? "zh"
+    : "en";
+  const regionOptions = React.useMemo(
+    () => getSupportedRegions().flatMap((flag) => {
+      const code = getRegionCode(flag);
+      return code ? [{
+        value: code,
+        label: `${flag} ${getRegionDisplayName(flag, regionLanguage)} (${code})`,
+      }] : [];
+    }),
+    [regionLanguage],
+  );
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    // 仅打开时读取最新值，后台轮询不能改写正在编辑的草稿。
+    const original = nextOpen ? node.region_override ?? "" : "";
+    originalRegionOverride.current = original;
+    setManualRegion(Boolean(original));
+    setRegionInput(original);
+    setOpen(nextOpen);
+  };
 
   React.useEffect(() => {
     setHidden(node.hidden);
@@ -2424,6 +2459,15 @@ function EditButton({ node }: { node: NodeDetail }) {
       );
       return;
     }
+    const regionPatch = buildRegionOverridePatch(
+      originalRegionOverride.current,
+      manualRegion,
+      regionInput,
+    );
+    if (regionPatch === null) {
+      toast.error(t("admin.nodeEdit.regionInvalid"));
+      return;
+    }
     try {
       setSaving(true);
       const res = await fetch(`/api/admin/client/${node.uuid}/edit`, {
@@ -2437,26 +2481,35 @@ function EditButton({ node }: { node: NodeDetail }) {
           hidden,
           traffic_limit,
           traffic_limit_type,
+          ...regionPatch,
         }),
         headers: {
           "Content-Type": "application/json",
         },
       });
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        let message = t("admin.nodeEdit.saveError", "保存失败");
+        if (res.headers.get("Content-Type")?.includes("application/json")) {
+          const body = await res.json();
+          if (typeof body?.message === "string") message = body.message;
+          else if (typeof body?.error === "string") message = body.error;
+        }
+        throw new Error(message);
       }
       refresh();
-      setOpen(false);
+      handleOpenChange(false);
       toast.success(t("admin.nodeEdit.saveSuccess", "保存成功"));
     } catch (error) {
       console.error("Error updating client:", error);
-      toast.error(t("admin.nodeEdit.saveError", "保存失败"));
+      toast.error(error instanceof Error
+        ? error.message
+        : t("admin.nodeEdit.saveError", "保存失败"));
     } finally {
       setSaving(false);
     }
   };
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger>
         <IconButton
           variant="ghost"
@@ -2507,6 +2560,47 @@ function EditButton({ node }: { node: NodeDetail }) {
               {t("common.group")}
             </label>
             <TextField.Root defaultValue={node.group} ref={groupRef} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-muted-foreground">
+              {t("admin.nodeEdit.region")}
+            </label>
+            <SegmentedControl.Root
+              value={manualRegion ? "manual" : "auto"}
+              onValueChange={(mode) => setManualRegion(mode === "manual")}
+              disabled={saving}
+              aria-label={t("admin.nodeEdit.region")}
+            >
+              <SegmentedControl.Item value="auto">
+                {t("admin.nodeEdit.regionAuto")}
+              </SegmentedControl.Item>
+              <SegmentedControl.Item value="manual">
+                {t("admin.nodeEdit.regionManual")}
+              </SegmentedControl.Item>
+            </SegmentedControl.Root>
+            {manualRegion && (
+              <SelectOrInput
+                options={regionOptions}
+                value={regionInput}
+                onChange={setRegionInput}
+                placeholder={t("admin.nodeEdit.regionPlaceholder")}
+                allowCustomInput
+                disabled={saving}
+                filter={(option, query) =>
+                  isRegionMatch(getRegionFlag(option.value), query)
+                }
+              />
+            )}
+            <Text size="1" color="gray">
+              {manualRegion
+                ? t("admin.nodeEdit.regionManualHint")
+                : t("admin.nodeEdit.regionAutoHint")}
+            </Text>
+            <Flex align="center" gap="1">
+              <Text size="1" color="gray">{t("admin.nodeEdit.regionCurrent")}</Text>
+              <Flag flag={node.region} size="4" />
+              <Text size="1">{getRegionDisplayName(node.region, regionLanguage)}</Text>
+            </Flex>
           </div>
           <div>
             <label className="block mb-1 text-sm font-medium text-muted-foreground">

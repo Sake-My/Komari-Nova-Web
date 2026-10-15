@@ -104,6 +104,14 @@
       "uuid": "UUID"
     },
     "nodeEdit": {
+      "region": "地區",
+      "regionAuto": "自動識別",
+      "regionManual": "手動設定",
+      "regionPlaceholder": "搜尋地區或輸入兩字母代碼，例如 DE",
+      "regionAutoHint": "使用自動識別的地區，儲存後清除手動設定。",
+      "regionManualHint": "選擇國家或地區，也可輸入兩字母代碼。Agent 後續回報不會覆蓋手動設定。",
+      "regionCurrent": "目前地區：",
+      "regionInvalid": "請選擇地區或輸入有效的兩字母國家／地區代碼。",
       "editInfo": "編輯資訊",
       "hidden": "隱藏節點",
       "hidden_description": "在未登入的情況下隱藏該節點",

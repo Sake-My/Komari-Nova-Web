@@ -13,6 +13,7 @@ export type NodeDetail = {
   ipv4: string;
   ipv6: string;
   region: string;
+  region_override?: string;
   mem_total: number;
   swap_total: number;
   disk_total: number;
