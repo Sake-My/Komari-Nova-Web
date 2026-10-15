@@ -1155,7 +1155,11 @@ const Header = ({
             aria-label={t("common.group")}
             className="km-admin-node-group-filter max-w-64"
           />
-          <Select.Content>
+          <Select.Content
+            position="popper"
+            side="bottom"
+            avoidCollisions={false}
+          >
             <Select.Item value="all">{t("admin.nodeTable.allGroups")}</Select.Item>
             <Select.Item value="ungrouped">{t("common.ungrouped")}</Select.Item>
             {groups.map((group) => (
