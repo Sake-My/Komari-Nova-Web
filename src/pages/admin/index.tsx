@@ -86,6 +86,12 @@ import { useSettings } from "@/lib/api";
 import { SelectOrInput } from "@/components/ui/select-or-input";
 import { useRPC2Call } from "@/contexts/RPC2Context";
 
+// 分号分隔多个分组，生成选项和筛选时使用相同的解析规则。
+const splitNodeGroups = (group?: string | null): string[] =>
+  (group ?? "")
+    .split(";")
+    .map((name) => name.trim())
+    .filter(Boolean);
 
 const NodeDetailsPage = () => {
   return (
@@ -105,9 +111,9 @@ const Layout = () => {
     () =>
       Array.from(
         new Set(
-          (Array.isArray(nodeDetail) ? nodeDetail : [])
-            .map((node) => node.group)
-            .filter((group): group is string => Boolean(group?.trim()))
+          (Array.isArray(nodeDetail) ? nodeDetail : []).flatMap((node) =>
+            splitNodeGroups(node.group)
+          )
         )
       ).sort((a, b) => a.localeCompare(b)),
     [nodeDetail]
@@ -119,14 +125,14 @@ const Layout = () => {
           const matchesName = node.name
             .toLowerCase()
             .includes(searchTerm.toLowerCase());
+          const nodeGroups = splitNodeGroups(node.group);
           // 真实组名使用独立前缀，避免与“全部”“未分组”的选项值冲突。
-          const groupValue = node.group?.trim()
-            ? `group:${node.group}`
-            : "ungrouped";
-          return (
-            matchesName &&
-            (selectedGroup === "all" || selectedGroup === groupValue)
-          );
+          const matchesGroup =
+            selectedGroup === "all" ||
+            (selectedGroup === "ungrouped"
+              ? nodeGroups.length === 0
+              : nodeGroups.some((group) => selectedGroup === `group:${group}`));
+          return matchesName && matchesGroup;
         })
         .sort((a, b) => a.weight - b.weight),
     [nodeDetail, searchTerm, selectedGroup]
