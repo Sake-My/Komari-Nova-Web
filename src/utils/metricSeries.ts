@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type {
   MetricPoint,
   MetricSeries,
@@ -115,7 +116,14 @@ export const pingTaskName = (
   taskId: string,
   tasks: ReadonlyMap<string, PublicPingTask>,
   fallback: (taskId: string) => string,
-) => tasks.get(taskId)?.name?.trim() || fallback(taskId);
+  t?: TFunction,
+) => {
+  const task = tasks.get(taskId);
+  const name = task?.name?.trim() || fallback(taskId);
+  if (!task || !t) return name;
+  if (!task.target_client) return `${name} · ${t("ping.outbound")}`;
+  return `${name} · ${t("ping.entry")} ← ${task.probe_source_name || t("ping.probe_source")}`;
+};
 
 // Keep ping metric series aligned with the backend's ORDER BY weight ASC, id ASC.
 export const comparePingTaskOrder = (

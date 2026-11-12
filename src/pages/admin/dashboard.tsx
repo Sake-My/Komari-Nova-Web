@@ -712,6 +712,7 @@ const DashboardContent = () => {
         stat.task_id,
         taskMap,
         (id) => `${t("ping.task", "Ping task")} ${id}`,
+        t,
       );
       const nodeName =
         nodeNameMap.get(stat.entity_id) ?? stat.entity_id.slice(0, 8);

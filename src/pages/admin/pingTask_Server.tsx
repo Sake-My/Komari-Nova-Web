@@ -18,6 +18,7 @@ import { Selector } from "@/components/Selector";
 export const ServerView = ({ pingTasks }: { pingTasks: PingTask[] }) => {
   const { t } = useTranslation();
   const { nodeDetail } = useNodeDetails();
+  const outboundTasks = React.useMemo(() => pingTasks.filter((task) => !task.target_client), [pingTasks]);
 
   const sortedNodes = React.useMemo(
     () =>
@@ -32,6 +33,9 @@ export const ServerView = ({ pingTasks }: { pingTasks: PingTask[] }) => {
 
   return (
     <div className="km-page-admin-pingtask-server km-pingtask-server-list rounded-xl overflow-hidden">
+      {pingTasks.some((task) => task.target_client) && (
+        <p className="p-3 text-sm text-gray-500">{t("ping.entry_server_view_hint")}</p>
+      )}
       <Table>
         <TableHeader>
           <TableHead className="w-48">{t("common.server")}</TableHead>
@@ -43,7 +47,7 @@ export const ServerView = ({ pingTasks }: { pingTasks: PingTask[] }) => {
               key={n.uuid}
               nodeUuid={n.uuid}
               nodeName={n.name}
-              pingTasks={pingTasks}
+              pingTasks={outboundTasks}
             />
           ))}
         </TableBody>
@@ -101,6 +105,7 @@ const ServerRow: React.FC<{
           type: task.type,
            
           target: task.target!,
+          target_client: task.target_client || "",
           default_on: task.default_on || false,
           clients: Array.from(current),
           interval: task.interval,

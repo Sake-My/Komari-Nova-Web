@@ -6,6 +6,7 @@ export interface PingTask {
   id?: number;
   interval?: number;
   target?: string;
+  target_client?: string;
   type?: string;
   [property: string]: any;
 }

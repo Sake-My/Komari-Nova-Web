@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Loading from "@/components/loading";
 import MetricBoundaryAxisTick from "@/components/MetricBoundaryAxisTick";
 import PingMetricStatContent from "@/components/PingMetricStatContent";
+import EntryProbeStatus from "@/components/EntryProbeStatus";
 import {
   ChartContainer,
   ChartTooltip,
@@ -149,7 +150,7 @@ const MiniPingChart = ({
       const tags = metricTags(series);
       const taskId = pingTaskId(tags);
       const taskLabel = taskId
-        ? pingTaskName(taskId, taskMap, (id) => `${t("ping.task")} ${id}`)
+        ? pingTaskName(taskId, taskMap, (id) => `${t("ping.task")} ${id}`, t)
         : t("ping.task");
       const remainingTags = formatRemainingTags(tags, ["task_id"]);
       const stableKey = metricSeriesKey(series.metric_key, tags);
@@ -236,6 +237,7 @@ const MiniPingChart = ({
       style={{ width, height }}
       className="km-mini-ping-chart flex min-h-0 flex-col gap-2 overflow-hidden"
     >
+      <EntryProbeStatus uuid={uuid} tasks={tasks} />
       {loading && (
         <div className="flex min-h-0 flex-1 items-center justify-center">
           <Loading />
@@ -291,7 +293,7 @@ const MiniPingChart = ({
                       className="shrink-0"
                       ariaLabel={`${item.name} ${t("common.details")}`}
                     >
-                      <PingMetricStatContent stat={stat} t={t} />
+                      <PingMetricStatContent stat={stat} task={item.taskId ? taskMap.get(item.taskId) : undefined} t={t} />
                     </Tips>
                   )}
                 </div>

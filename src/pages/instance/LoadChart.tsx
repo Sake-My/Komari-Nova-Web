@@ -52,6 +52,7 @@ import { Button } from "@/components/ui/button";
 import Loading from "@/components/loading";
 import MetricBoundaryAxisTick from "@/components/MetricBoundaryAxisTick";
 import PingMetricStatContent from "@/components/PingMetricStatContent";
+import EntryProbeStatus from "@/components/EntryProbeStatus";
 import Tips from "@/components/ui/tips";
 import { useAccount } from "@/contexts/AccountContext";
 import { useNodeList } from "@/contexts/NodeListContext";
@@ -453,6 +454,7 @@ const formatTags = (
       taskId,
       pingTaskMap,
       (id) => `${t("ping.task")} ${id}`,
+      t,
     );
     const remaining = formatRemainingTags(tags, ["task_id"]);
     return remaining ? `${taskLabel} ${remaining}` : taskLabel;
@@ -1513,6 +1515,7 @@ const LoadChart = ({ data = [], onRealtimeActiveChange }: LoadChartProps) => {
       )}
       {error && <div className="w-full text-center text-red-500">{error}</div>}
 
+      {uuid && metricKeys.some(isPingMetric) && <EntryProbeStatus uuid={uuid} tasks={pingTasks} />}
       <DndContext
         sensors={chartSensors}
         collisionDetection={closestCenter}
@@ -1545,7 +1548,11 @@ const LoadChart = ({ data = [], onRealtimeActiveChange }: LoadChartProps) => {
           );
           const chartTicks = metricChartBoundaryTicks(chartRows);
           const chartConfig = toChartConfig(built.series);
-          const latestText = getLatestText(chartRows, built.series);
+          // 入口当前状态由原始样本单独展示，不能把历史成功值当成当前值。
+          const latestText = getLatestText(chartRows, built.series.filter((item) => {
+            const taskId = pingTaskId(item.tags);
+            return !isPingMetric(item.metricKey) || !taskId || !pingTaskMap.get(taskId)?.target_client;
+          }));
           const allHidden = built.series.length > 0 && built.series.every((item) => isSeriesHidden(chart.id, item));
 
           return (
@@ -1637,7 +1644,7 @@ const LoadChart = ({ data = [], onRealtimeActiveChange }: LoadChartProps) => {
                               className="shrink-0"
                               ariaLabel={`${item.label} ${t("common.details")}`}
                             >
-                              <PingMetricStatContent stat={stat} t={t} />
+                              <PingMetricStatContent stat={stat} task={taskId ? pingTaskMap.get(taskId) : undefined} t={t} />
                             </Tips>
                           )}
                           <button

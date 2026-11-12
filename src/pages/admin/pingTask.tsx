@@ -76,6 +76,10 @@ const AddButton: React.FC = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<string[]>([]);
   const [defaultOn, setDefaultOn] = React.useState(false);
+  const [entryProbe, setEntryProbe] = React.useState(false);
+  const [targetClient, setTargetClient] = React.useState("");
+  const [probeSource, setProbeSource] = React.useState("");
+  const { nodeDetail } = useNodeDetails();
   const { refresh } = usePingTask();
   const [selectedType, setSelectedType] = React.useState<
     "icmp" | "tcp" | "http"
@@ -83,16 +87,21 @@ const AddButton: React.FC = () => {
   const [saving, setSaving] = React.useState(false);
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!defaultOn && selected.length === 0) {
+    if (entryProbe && (!targetClient || !probeSource || targetClient === probeSource)) {
+      toast.error(t("ping.entry_nodes_required"));
+      return;
+    }
+    if (!entryProbe && !defaultOn && selected.length === 0) {
       toast.error(t("ping.default_on_description"));
       return;
     }
     const payload = {
       name: e.currentTarget.ping_name.value,
       type: selectedType,
-      target: e.currentTarget.ping_target.value,
-      default_on: defaultOn,
-      clients: selected,
+      target: e.currentTarget.ping_target.value.trim(),
+      target_client: entryProbe ? targetClient : "",
+      default_on: entryProbe ? false : defaultOn,
+      clients: entryProbe ? [probeSource] : selected,
       interval: parseInt(e.currentTarget.interval.value, 10),
     };
     setSaving(true);
@@ -109,6 +118,9 @@ const AddButton: React.FC = () => {
           setSelected([]);
           setDefaultOn(false);
           setSelectedType("icmp");
+          setEntryProbe(false);
+          setTargetClient("");
+          setProbeSource("");
           toast.success(t("common.success"));
         } else {
           response
@@ -139,8 +151,46 @@ const AddButton: React.FC = () => {
         <Dialog.Title>{t("common.add")}</Dialog.Title>
         <form onSubmit={handleSubmit}>
           <Flex direction="column" justify="end" gap="2" className="font-bold">
+            <label htmlFor="ping_direction">{t("ping.direction")}</label>
+            <Select.Root
+              value={entryProbe ? "entry" : "outbound"}
+              onValueChange={(value) => {
+                setEntryProbe(value === "entry");
+                if (value === "entry" && selectedType === "http") setSelectedType("icmp");
+              }}
+            >
+              <Select.Trigger id="ping_direction" />
+              <Select.Content>
+                <Select.Item value="outbound">{t("ping.outbound")}</Select.Item>
+                <Select.Item value="entry">{t("ping.entry")}</Select.Item>
+              </Select.Content>
+            </Select.Root>
+            {entryProbe && (
+              <>
+                <p className="text-sm font-normal text-gray-500">{t("ping.entry_description")}</p>
+                <label htmlFor="target_client">{t("ping.target_node")}</label>
+                <Select.Root value={targetClient} onValueChange={(value) => {
+                  setTargetClient(value);
+                  if (probeSource === value) setProbeSource("");
+                }}>
+                  <Select.Trigger id="target_client" placeholder={t("common.select")} />
+                  <Select.Content>
+                    {nodeDetail.map((node) => <Select.Item key={node.uuid} value={node.uuid}>{node.name}</Select.Item>)}
+                  </Select.Content>
+                </Select.Root>
+                <label htmlFor="probe_source">{t("ping.probe_source")}</label>
+                <Select.Root value={probeSource} onValueChange={setProbeSource}>
+                  <Select.Trigger id="probe_source" placeholder={t("common.select")} />
+                  <Select.Content>
+                    {nodeDetail.filter((node) => node.uuid !== targetClient).map((node) => (
+                      <Select.Item key={node.uuid} value={node.uuid}>{node.name}</Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+              </>
+            )}
             <label htmlFor="ping_name">{t("common.name")}</label>
-            <TextField.Root id="ping_name" name="ping_name" />
+            <TextField.Root id="ping_name" name="ping_name" required />
             <label htmlFor="type">{t("common.type")}</label>
             <Select.Root
               value={selectedType}
@@ -152,15 +202,20 @@ const AddButton: React.FC = () => {
               <Select.Content>
                 <Select.Item value="icmp">ICMP</Select.Item>
                 <Select.Item value="tcp">TCP</Select.Item>
-                <Select.Item value="http">HTTP</Select.Item>
+                {!entryProbe && <Select.Item value="http">HTTP</Select.Item>}
               </Select.Content>
             </Select.Root>
-            <label htmlFor="ping_target">{t("ping.target")}</label>
+            <label htmlFor="ping_target">{t(entryProbe ? "ping.entry_address" : "ping.target")}</label>
             <TextField.Root
               id="ping_target"
               name="ping_target"
-              placeholder="1.1.1.1 | 1.1.1.1:80 | https://1.1.1.1"
+              placeholder={entryProbe
+                ? selectedType === "tcp" ? "203.0.113.1:443 | [2001:db8::1]:443" : "203.0.113.1 | 2001:db8::1"
+                : "1.1.1.1 | 1.1.1.1:80 | https://1.1.1.1"}
+              required
             />
+            {entryProbe && <p className="text-sm font-normal text-gray-500">{t(selectedType === "tcp" ? "ping.entry_tcp_hint" : "ping.entry_icmp_hint")}</p>}
+            {!entryProbe && <>
             <label htmlFor="ping_server">{t("common.server")}</label>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-start gap-2">
@@ -180,6 +235,8 @@ const AddButton: React.FC = () => {
                 {t("ping.default_on_description")}
               </label>
             </div>
+            </>}
+            {entryProbe && <p className="text-sm font-normal text-gray-500">{t("ping.entry_immutable")}</p>}
             <label htmlFor="interval">
               {t("ping.interval")} ({t("time.second")})
             </label>
@@ -188,6 +245,8 @@ const AddButton: React.FC = () => {
               name="interval"
               defaultValue={60}
               type="number"
+              min={1}
+              required
               placeholder="60"
             />
             <div className="flex justify-end gap-2">

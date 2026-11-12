@@ -1,17 +1,20 @@
 import type { TFunction } from "i18next";
-import type { PingMetricStat } from "@/types/metrics";
+import type { PingMetricStat, PublicPingTask } from "@/types/metrics";
 
 type PingMetricStatContentProps = {
   stat: PingMetricStat;
   t: TFunction;
+  task?: PublicPingTask;
 };
 
 const formatMilliseconds = (value: number) => `${Math.round(value)} ms`;
 
-const PingMetricStatContent = ({ stat, t }: PingMetricStatContentProps) => {
+const PingMetricStatContent = ({ stat, t, task }: PingMetricStatContentProps) => {
+  const entryProbe = Boolean(stat.target_client || task?.target_client);
+  const failureLabel = (stat.type || task?.type) === "tcp" ? "ping.failure_rate" : "chart.lossRate";
   const rows: Array<[string, string]> = [
     [
-      t("chart.lossRate"),
+      t(failureLabel),
       `${Number(stat.loss ?? 0).toFixed(1)}%${
         stat.loss_approximate ? ` ${t("chart.approximate")}` : ""
       }`,
@@ -21,7 +24,7 @@ const PingMetricStatContent = ({ stat, t }: PingMetricStatContentProps) => {
   if (typeof stat.min === "number") rows.push([t("chart.min"), formatMilliseconds(stat.min)]);
   if (typeof stat.max === "number") rows.push([t("chart.max"), formatMilliseconds(stat.max)]);
   if (typeof stat.avg === "number") rows.push([t("chart.avg"), formatMilliseconds(stat.avg)]);
-  if (typeof stat.latest === "number") rows.push([t("chart.latest"), formatMilliseconds(stat.latest)]);
+  if (typeof stat.latest === "number") rows.push([t(entryProbe ? "ping.last_success_sample" : "chart.latest"), formatMilliseconds(stat.latest)]);
   if (typeof stat.p50 === "number") rows.push(["P50", formatMilliseconds(stat.p50)]);
   if (typeof stat.p99 === "number") rows.push(["P99", formatMilliseconds(stat.p99)]);
   if (typeof stat.stddev === "number") {

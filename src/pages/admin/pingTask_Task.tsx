@@ -78,7 +78,8 @@ export const TaskView = ({ pingTasks }: { pingTasks: PingTask[] }) => {
       const allDeleted = original.length > 0 && existing.length === 0;
       return {
         ...task,
-        clients: existing,
+        // 入口线路固定，保留原始探测节点 ID，不能因节点消失改写线路。
+        clients: task.target_client ? original : existing,
         __allClientsDeleted: allDeleted,
         __originalCount: original.length,
       };
@@ -179,6 +180,8 @@ const Row = ({
   const { refresh } = usePingTask();
   const { nodeDetail } = useNodeDetails();
   const isMobile = useIsMobile();
+  const entryProbe = Boolean(task.target_client);
+  const nodeName = (uuid: string) => nodeDetail.find((node) => node.uuid === uuid)?.name || uuid;
   const sortableId = getTaskSortableId(task);
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: sortableId });
@@ -200,7 +203,7 @@ const Row = ({
   });
 
   const submitEdit = (newForm: typeof form) => {
-    if (!newForm.default_on && newForm.clients.length === 0) {
+    if (!entryProbe && !newForm.default_on && newForm.clients.length === 0) {
       toast.error(t("ping.default_on_description"));
       return;
     }
@@ -215,6 +218,7 @@ const Row = ({
             name: newForm.name,
             type: newForm.type,
             target: newForm.target,
+            target_client: task.target_client || "",
             default_on: newForm.default_on,
             clients: newForm.clients,
             interval: newForm.interval,
@@ -297,10 +301,15 @@ const Row = ({
           <MenuIcon size={isMobile ? 18 : 16} color={"var(--gray-8)"} />
         </div>
       </TableCell>
-      <TableCell>{task.name}</TableCell>
+      <TableCell>
+        <div>{task.name}</div>
+        <span className="text-xs text-gray-500">{t(entryProbe ? "ping.entry" : "ping.outbound")}</span>
+      </TableCell>
       <TableCell>
         <Flex gap="2" align="center">
-          {task.clients && task.clients.length > 0
+          {entryProbe ? (
+            <span>{nodeName(task.clients?.[0] || "")} → {nodeName(task.target_client!)}</span>
+          ) : task.clients && task.clients.length > 0
             ? (() => {
                 const names = task.clients.map((uuid) => {
                   const name =
@@ -318,7 +327,7 @@ const Row = ({
               {t("ping.default_on_short")}
             </span>
           )}
-          <NodeSelectorDialog
+          {!entryProbe && <NodeSelectorDialog
             value={form.clients ?? []}
             onChange={(uuids) => {
               const nextForm = { ...form, clients: uuids };
@@ -333,7 +342,7 @@ const Row = ({
             >
               <MoreHorizontal size="16" />
             </IconButton>
-          </NodeSelectorDialog>
+          </NodeSelectorDialog>}
         </Flex>
       </TableCell>
       <TableCell>{task.target}</TableCell>
@@ -341,7 +350,13 @@ const Row = ({
       <TableCell>{task.interval}</TableCell>
       <TableCell className="flex items-center gap-2">
         {/* 编辑按钮 */}
-        <Dialog.Root open={editOpen} onOpenChange={setEditOpen}>
+        <Dialog.Root open={editOpen} onOpenChange={(open) => {
+          if (open) setForm({
+            name: task.name || "", type: task.type || "icmp", target: task.target || "",
+            clients: task.clients || [], default_on: task.default_on || false, interval: task.interval || 60,
+          });
+          setEditOpen(open);
+        }}>
           <Dialog.Trigger>
             <IconButton
               variant="soft"
@@ -354,6 +369,7 @@ const Row = ({
           <Dialog.Content className="km-pingtask-task-form">
             <Dialog.Title>{t("common.edit")}</Dialog.Title>
             <form onSubmit={handleEdit} className="flex flex-col gap-2">
+              <p className="text-sm text-gray-500">{t(entryProbe ? "ping.entry_immutable" : "ping.direction_immutable")}</p>
               <label>{t("common.name")}</label>
               <TextField.Root
                 value={form.name}
@@ -365,6 +381,7 @@ const Row = ({
               <label>{t("common.type")}</label>
               <Select.Root
                 value={form.type}
+                disabled={entryProbe}
                 onValueChange={(v) =>
                   setForm((f) => ({ ...f, type: v as any }))
                 }
@@ -379,11 +396,18 @@ const Row = ({
               <label>{t("ping.target")}</label>
               <TextField.Root
                 value={form.target}
+                readOnly={entryProbe}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, target: e.target.value }))
                 }
                 required
               />
+              {entryProbe ? (
+                <div className="text-sm">
+                  <div>{t("ping.probe_source")}: {nodeName(task.clients?.[0] || "")}</div>
+                  <div>{t("ping.target_node")}: {nodeName(task.target_client!)}</div>
+                </div>
+              ) : <>
               <label>{t("common.server")}</label>
               <Flex direction="column" gap="2">
                 <NodeSelectorDialog
@@ -406,11 +430,13 @@ const Row = ({
                   {t("ping.default_on_description")}
                 </label>
               </Flex>
+              </>}
               <label>
                 {t("ping.interval")} ({t("time.second")})
               </label>
               <TextField.Root
                 type="number"
+                min={1}
                 value={form.interval}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, interval: Number(e.target.value) }))

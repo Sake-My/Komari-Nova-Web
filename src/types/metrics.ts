@@ -40,6 +40,10 @@ export type PublicPingTask = {
   interval?: number;
   clients?: string[];
   default_on?: boolean;
+  target_client?: string;
+  probe_source?: string;
+  probe_source_name?: string;
+  probe_source_online?: boolean;
 };
 
 export type PingMetricStat = {
@@ -57,6 +61,12 @@ export type PingMetricStat = {
   max?: number | null;
   avg?: number | null;
   latest?: number | null;
+  current_value?: number;
+  current_time?: string;
+  target_client?: string;
+  probe_source?: string;
+  probe_source_name?: string;
+  probe_source_online?: boolean;
   p50?: number | null;
   p99?: number | null;
   stddev?: number | null;
